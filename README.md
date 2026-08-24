@@ -4,6 +4,8 @@
 
 Use this online: https://floccinaucinihilipilificator.vercel.app/. I don't think I should explain how to use this locally.
 
+<img width="100%" alt="floccinaucinihilipilificator." src="https://github.com/user-attachments/assets/db977461-1aa6-460a-9d63-666cad235e47" />
+
 Give it a file size limit and it'll try to squeeze your image under it without making it look like it was compressed on some sketchy website that runs your files through their servers first. 
 
 You can drag and drop images, click to upload, or use presets for 100 KB, 500 KB, 1 MB, etc., with custom target sizes if those aren't enough. It tries to keep the highest quality possible while staying under the limit, and if lowering the quality isn't enough, it'll shrink the image dimensions too. It supports JPEG, PNG, and WebP, with an Auto format option, as well as an optional maximum width. Everything happens in your browser. Seriously, nothing gets uploaded anywhere.
