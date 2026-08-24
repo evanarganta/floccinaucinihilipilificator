@@ -4,7 +4,9 @@
 
 Use this online: https://floccinaucinihilipilificator.vercel.app/. I don't think I should explain how to use this locally.
 
+​
 <img width="100%" alt="floccinaucinihilipilificator." src="https://github.com/user-attachments/assets/db977461-1aa6-460a-9d63-666cad235e47" />
+​
 
 Give it a file size limit and it'll try to squeeze your image under it without making it look like it was compressed on some sketchy website that runs your files through their servers first. 
 
