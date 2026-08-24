@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A fast, private browser-based image compressor and resolution decreaser. Zero server uploads.">
+  <title>floccinaucinihilipilificator.</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div class="top-nav">
+        <a class="brand" href="./" aria-label="Under home">floccinaucinihilipilificator<span>.</span></a>
+      </div>
+    </header>
+
+    <section id="upload-view" class="panel upload-panel">
+      <label id="drop-zone" class="drop-zone" for="file-input">
+        <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif" multiple hidden>
+        <div class="drop-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <strong>Drop images here.</strong>
+        <span>or click to browse.</span>
+      </label>
+      <p id="upload-error" class="error" role="alert"></p>
+    </section>
+
+    <section id="editor-view" class="panel editor" hidden>
+      <div class="topbar">
+        <button id="new-image" class="text-button">← Start Over</button>
+        <div id="batch-counter" class="batch-counter" hidden>
+          <span id="batch-count-text">1 image loaded</span>
+        </div>
+      </div>
+
+      <div id="batch-list-container" class="batch-list-container" hidden>
+        <div class="batch-list-header">
+          <span>Loaded Queue (<span id="queue-length">0</span>)</span>
+          <button id="clear-queue" class="text-button-danger">Clear All</button>
+        </div>
+        <div id="batch-thumbnails" class="batch-thumbnails"></div>
+      </div>
+
+      <div class="editor-grid">
+        <div class="preview-column">
+          <div class="preview-wrap" id="editor-preview-wrap">
+            <img id="preview" alt="Selected image preview">
+          </div>
+          <div class="image-meta-bar">
+            <span id="file-name" class="meta-filename">image.jpg</span>
+            <span id="original-info" class="meta-details">0 × 0 · 0 KB</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="mode-tabs" role="tablist">
+            <button id="tab-target" class="tab-btn active" role="tab" aria-selected="true" data-mode="target">
+              Target File Size
+            </button>
+            <button id="tab-manual" class="tab-btn" role="tab" aria-selected="false" data-mode="manual">
+              Manual Scale
+            </button>
+          </div>
+
+          <div id="target-mode-controls" class="mode-panel">
+            <div class="control-group">
+              <label class="label">Target Size</label>
+              <div id="presets" class="presets">
+                <button data-bytes="51200">50 KB</button>
+                <button data-bytes="102400">100 KB</button>
+                <button data-bytes="512000" class="active">500 KB</button>
+                <button data-bytes="1048576">1 MB</button>
+                <button data-bytes="2097152">2 MB</button>
+                <button data-bytes="custom">Custom</button>
+              </div>
+              <div id="custom-target-wrap" class="custom-target" hidden>
+                <input id="custom-target" type="number" min="1" value="500">
+                <select id="custom-unit">
+                  <option value="1024">KB</option>
+                  <option value="1048576">MB</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="manual-mode-controls" class="mode-panel" hidden>
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="quality-range" class="label">Image Quality</label>
+                <span id="quality-value" class="range-val">80%</span>
+              </div>
+              <input id="quality-range" type="range" min="5" max="100" value="80" step="1">
+            </div>
+
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="scale-range" class="label">Resolution Scale</label>
+                <span id="scale-value" class="range-val">100%</span>
+              </div>
+              <input id="scale-range" type="range" min="10" max="100" value="100" step="5">
+              <div class="scale-presets">
+                <button data-scale="100" class="scale-preset-btn active">100%</button>
+                <button data-scale="75" class="scale-preset-btn">75%</button>
+                <button data-scale="50" class="scale-preset-btn">50%</button>
+                <button data-scale="25" class="scale-preset-btn">25%</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-group resolution-group">
+            <div class="label-with-hint">
+              <span class="label">Resolution & Dimensions</span>
+              <span class="hint-text">Resize image</span>
+            </div>
+            
+            <div class="quick-res-buttons">
+              <button data-res="original" class="res-btn active">Orig.</button>
+              <button data-res="3840" class="res-btn">4K</button>
+              <button data-res="1920" class="res-btn">1080p</button>
+              <button data-res="1280" class="res-btn">720p</button>
+              <button data-res="800" class="res-btn">800px</button>
+              <button data-res="512" class="res-btn">512px</button>
+            </div>
+
+            <div class="dimensions-lock-row">
+              <div class="dim-input-wrap">
+                <label for="max-width">Width (px)</label>
+                <input id="max-width" type="number" min="1" placeholder="Auto">
+              </div>
+              <button id="lock-aspect" class="lock-btn active" title="Lock Aspect Ratio">
+                🔗
+              </button>
+              <div class="dim-input-wrap">
+                <label for="max-height">Height (px)</label>
+                <input id="max-height" type="number" min="1" placeholder="Auto">
+              </div>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label class="label" for="format">Output Format</label>
+            <select id="format">
+              <option value="auto">Auto (Smart Choice)</option>
+              <option value="image/webp">WebP</option>
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/png">PNG</option>
+            </select>
+          </div>
+
+          <details class="advanced">
+            <summary>Advanced Options</summary>
+            <div class="advanced-content">
+              <div class="bg-color-group">
+                <label for="bg-color-select">Background Color (for PNG conversion)</label>
+                <div class="bg-color-row">
+                  <select id="bg-color-select">
+                    <option value="transparent">Transparent / Auto</option>
+                    <option value="#ffffff">White (#FFFFFF)</option>
+                    <option value="#000000">Black (#000000)</option>
+                    <option value="custom">Custom Color</option>
+                  </select>
+                  <input id="bg-color-custom" type="color" value="#ffffff" hidden>
+                </div>
+              </div>
+              <div class="privacy-note">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>EXIF metadata is stripped automatically.</span>
+              </div>
+            </div>
+          </details>
+
+          <button id="compress-button" class="primary-button">
+            <span id="compress-btn-text">Shrink Image</span>
+          </button>
+          <p id="status" class="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="result-view" class="panel result" hidden>
+      <div class="result-topbar">
+        <button id="result-new-image" class="text-button">← Compress another</button>
+        <button id="adjust-button" class="secondary-inline-btn">Adjust settings</button>
+      </div>
+
+      <div class="result-heading">
+        <span class="eyebrow">Done</span>
+        <h2 id="reduction">—</h2>
+        <p id="result-summary"></p>
+      </div>
+
+      <div class="comparison">
+        <div class="comp-box">
+          <span class="comp-label">Original</span>
+          <strong id="original-result-size">—</strong>
+          <small id="original-result-dimensions">—</small>
+        </div>
+        <div class="arrow-divider" aria-hidden="true">→</div>
+        <div class="comp-box highlight">
+          <span class="comp-label">Compressed</span>
+          <strong id="compressed-result-size">—</strong>
+          <small id="compressed-result-dimensions">—</small>
+        </div>
+      </div>
+
+      <div class="comparison-inspector">
+        <div class="inspector-header">
+          <span class="inspector-title">Comparison (Drag slider)</span>
+          <div class="zoom-controls">
+            <button class="zoom-btn active" data-zoom="fit">Fit</button>
+            <button class="zoom-btn" data-zoom="100">100%</button>
+            <button class="zoom-btn" data-zoom="200">200%</button>
+          </div>
+        </div>
+
+        <div id="split-slider-container" class="split-slider-container">
+          <div id="compressed-layer" class="split-layer compressed-layer">
+            <img id="result-preview" alt="Compressed image preview">
+            <span class="layer-badge right">Compressed</span>
+          </div>
+          <div id="original-layer" class="split-layer original-layer">
+            <img id="original-preview-split" alt="Original image preview">
+            <span class="layer-badge left">Original</span>
+          </div>
+          <div id="split-handle" class="split-handle">
+            <div class="handle-line"></div>
+            <div class="handle-button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <a id="download-button" class="primary-button download" href="#">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="download-btn-text">Download Image</span>
+        </a>
+        <button id="copy-button" class="secondary-button copy-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copy to Clipboard</span>
+        </button>
+      </div>
+
+      <div id="batch-results-wrap" class="batch-results-wrap" hidden>
+        <h3>Batch Results (<span id="batch-completed-count">0</span> images)</h3>
+        <div id="batch-results-list" class="batch-results-list"></div>
+        <button id="download-zip-button" class="primary-button zip-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download All as ZIP</span>
+        </button>
+      </div>
+    </section>
+
+    <footer>
+      <span>&#169; 2026 Evan Arganta.</span><a href="https://github.com/evanarganta/under">GitHub.</a>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
