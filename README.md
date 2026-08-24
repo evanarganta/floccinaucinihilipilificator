@@ -2,7 +2,7 @@
 
 <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"> <img src="https://img.shields.io/badge/runs-in%20your%20browser-brightgreen" alt="Runs in your browser"> <img src="https://img.shields.io/badge/backend-none-lightgrey" alt="No backend"> <img src="https://img.shields.io/badge/uploads-none-lightgrey" alt="No uploads">
 
-Give it a file size limit and it'll try to squeeze your image under it without making it look like it was compressed on some other sketchy websites that runs them through their servers first. The image stays on your device, by the way. I don't think I should explain how to use this.
+Give it a file size limit and it'll try to squeeze your image under it without making it look like it was compressed on some other sketchy websites that runs them through their servers first. I don't think I should explain how to use this.
 
 Features:
 
