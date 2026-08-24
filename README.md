@@ -1,10 +1,10 @@
-# floccinaucinihilipilificator.
+### floccinaucinihilipilificator.
 
-<p align="center"> <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"> <img src="https://img.shields.io/badge/runs-in%20your%20browser-brightgreen" alt="Runs in your browser"> <img src="https://img.shields.io/badge/backend-none-lightgrey" alt="No backend"> <img src="https://img.shields.io/badge/uploads-none-lightgrey" alt="No uploads"> </p>
+<img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"> <img src="https://img.shields.io/badge/runs-in%20your%20browser-brightgreen" alt="Runs in your browser"> <img src="https://img.shields.io/badge/backend-none-lightgrey" alt="No backend"> <img src="https://img.shields.io/badge/uploads-none-lightgrey" alt="No uploads">
 
-Give it a file size limit and it'll try to squeeze your image under it without making it look like it was compressed on some other sketchy websites that runs them through their servers first. The image stays on your device, by the way.
+Give it a file size limit and it'll try to squeeze your image under it without making it look like it was compressed on some other sketchy websites that runs them through their servers first. The image stays on your device, by the way. I don't think I should explain how to use this.
 
-## Features
+Features:
 
 * Drag and drop images.
 * Click to upload.
@@ -18,19 +18,6 @@ Give it a file size limit and it'll try to squeeze your image under it without m
 * Everything happens in your browser.
 * Seriously, nothing gets uploaded anywhere.
 
-## Running locally
-
-There's no build step or anything. It's just HTML, CSS, and JavaScript. Clone the repository:
-
-```bash id="5yjx1x"
-git clone https://github.com/evanarganta/floccinaucinihilipilificator.git
-cd floccinaucinihilipilificator
-```
-
-Then open `app/index.html`. Use a reasonably modern browser and you should be fine. Auto mode prefers WebP when your browser supports it and falls back to JPEG when necessary. That's it. You can use a local server if you want, but you really don't have to. 
-
-## Project structure
-
 ```text id="0e3bvs"
 floccinaucinihilipilificator/
 ├── app/
@@ -42,6 +29,4 @@ floccinaucinihilipilificator/
 └── README.md
 ```
 
-## License
-
-MIT License. Do whatever you want with it, within the limits of the license and, preferably, the law. (As far as I know, the favicon shouldn't be copyrighted, since it's a .svg, I think...)
+Released under the infamous MIT License. Do whatever you want with it, within the limits of the license and, preferably, the law. (As far as I know, the favicon shouldn't be copyrighted, since it's a .svg, I think...)
