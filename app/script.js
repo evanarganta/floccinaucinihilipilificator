@@ -539,7 +539,7 @@ function displaySingleResult(result, file) {
   downloadButton.href = currentResultUrl;
 
   const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
-  downloadButton.download = `${baseName}-compressed.${extensionFor(result.type)}`;
+  downloadButton.download = `${baseName}-floccinaucinihilipilificated.${extensionFor(result.type)}`;
 
   const savedPercent = Math.max(0, (1 - result.blob.size / file.size) * 100);
   reduction.textContent = `${savedPercent.toFixed(1)}% smaller`;
@@ -555,6 +555,7 @@ function displaySingleResult(result, file) {
   downloadButton.hidden = false;
   copyButton.hidden = false;
 
+  resetSplitSlider();
   updateOuterVisibility(true);
   editorView.hidden = true;
   resultView.hidden = false;
@@ -582,7 +583,7 @@ function displayBatchResults() {
     row.className = "batch-res-item";
 
     const baseName = item.file.name.replace(/\.[^.]+$/, "");
-    const dlName = `${baseName}-compressed.${extensionFor(item.type)}`;
+    const dlName = `${baseName}-floccinaucinihilipilificated.${extensionFor(item.type)}`;
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "batch-res-name";
@@ -611,6 +612,7 @@ function displayBatchResults() {
   downloadButton.hidden = true;
   copyButton.hidden = true;
 
+  resetSplitSlider();
   updateOuterVisibility(true);
   editorView.hidden = true;
   resultView.hidden = false;
@@ -626,7 +628,7 @@ downloadZipButton.addEventListener("click", async () => {
   const zip = new JSZip();
   batchResults.forEach((item) => {
     const baseName = item.file.name.replace(/\.[^.]+$/, "");
-    const fileName = `${baseName}-compressed.${extensionFor(item.type)}`;
+    const fileName = `${baseName}-floccinaucinihilipilificated.${extensionFor(item.type)}`;
     zip.file(fileName, item.blob);
   });
 
@@ -677,12 +679,17 @@ copyButton.addEventListener("click", async () => {
 
 let isDraggingSplit = false;
 
+function resetSplitSlider() {
+  if (originalLayer) originalLayer.style.clipPath = "inset(0 50% 0 0)";
+  if (splitHandle) splitHandle.style.left = "50%";
+}
+
 function updateSplitPosition(clientX) {
   const rect = splitSliderContainer.getBoundingClientRect();
   let percentage = ((clientX - rect.left) / rect.width) * 100;
   percentage = Math.max(0, Math.min(100, percentage));
 
-  originalLayer.style.width = `${percentage}%`;
+  originalLayer.style.clipPath = `inset(0 ${100 - percentage}% 0 0)`;
   splitHandle.style.left = `${percentage}%`;
 }
 
