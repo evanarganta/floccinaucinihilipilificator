@@ -584,11 +584,24 @@ function displayBatchResults() {
     const baseName = item.file.name.replace(/\.[^.]+$/, "");
     const dlName = `${baseName}-compressed.${extensionFor(item.type)}`;
 
-    row.innerHTML = `
-      <span class="batch-res-name">${item.file.name}</span>
-      <span class="batch-res-size">${formatBytes(item.file.size)} → <strong>${formatBytes(item.blob.size)}</strong></span>
-      <a class="batch-res-dl" href="${itemUrl}" download="${dlName}">Download</a>
-    `;
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "batch-res-name";
+    nameSpan.textContent = item.file.name;
+
+    const sizeSpan = document.createElement("span");
+    sizeSpan.className = "batch-res-size";
+    const strong = document.createElement("strong");
+    strong.textContent = formatBytes(item.blob.size);
+    sizeSpan.textContent = `${formatBytes(item.file.size)} → `;
+    sizeSpan.appendChild(strong);
+
+    const dlLink = document.createElement("a");
+    dlLink.className = "batch-res-dl";
+    dlLink.href = itemUrl;
+    dlLink.download = dlName;
+    dlLink.textContent = "Download";
+
+    row.append(nameSpan, sizeSpan, dlLink);
 
     batchResultsList.appendChild(row);
   });
