@@ -978,10 +978,24 @@ input[type="color"] {
 footer {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 14px;
   margin-top: 36.5px;
   color: var(--muted);
   font-size: 0.76rem;
+}
+
+footer .github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border-bottom: none;
+  transition: color 0.15s ease;
+}
+
+footer .github-link:hover {
+  color: var(--ink);
 }
 
 footer span + span::before {
@@ -1004,6 +1018,6 @@ footer span + span::before {
   .presets { grid-template-columns: repeat(2, 1fr); }
   .comparison { grid-template-columns: 1fr; text-align: center; }
   .arrow-divider { transform: rotate(90deg); }
-  footer { flex-direction: column; align-items: center; gap: 4px; }
+  footer { flex-direction: row; align-items: center; gap: 12px; }
   footer span + span::before { display: none; }
 }
