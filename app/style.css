@@ -983,6 +983,7 @@ footer {
   margin-top: 36.5px;
   color: var(--muted);
   font-size: 0.76rem;
+  flex-direction: column;
 }
 
 footer .github-link {
