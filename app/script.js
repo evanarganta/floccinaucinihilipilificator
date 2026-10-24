@@ -104,8 +104,25 @@ function extensionFor(type) {
     "image/webp": "webp",
     "image/jpeg": "jpg",
     "image/png": "png",
-    "image/avif": "avif"
+    "image/avif": "avif",
+    "image/gif": "gif",
+    "image/bmp": "bmp"
   })[type] || "webp";
+}
+
+function imageFormatLabel(type, fileName) {
+  const mimeLabels = {
+    "image/webp": "WEBP",
+    "image/jpeg": "JPG",
+    "image/jpg": "JPG",
+    "image/png": "PNG",
+    "image/avif": "AVIF",
+    "image/gif": "GIF",
+    "image/bmp": "BMP",
+    "image/x-ms-bmp": "BMP"
+  };
+  const extension = fileName.match(/\.([^.]+)$/)?.[1] || "IMAGE";
+  return mimeLabels[type.toLowerCase()] || extension.toUpperCase();
 }
 
 function getTargetBytes() {
@@ -235,7 +252,7 @@ async function optimizeTargetMode(image) {
   let bestResult = null;
 
   for (let attempt = 0; attempt < 10; attempt++) {
-    statusText.textContent = `Optimizing pass ${attempt + 1}…`;
+    compressBtnText.textContent = `Optimizing pass ${attempt + 1}…`;
     const result = await encodeAtDimensions(image, width, height, type, targetBytes);
     bestResult = result;
 
@@ -336,6 +353,7 @@ presets.addEventListener("click", (event) => {
 lockAspectBtn.addEventListener("click", () => {
   isAspectLocked = !isAspectLocked;
   lockAspectBtn.classList.toggle("active", isAspectLocked);
+  lockAspectBtn.setAttribute("aria-pressed", String(isAspectLocked));
 });
 
 maxWidthInput.addEventListener("input", () => {
@@ -396,7 +414,7 @@ function renderBatchDrawer() {
   if (filesQueue.length <= 1) {
     batchCounter.hidden = true;
     batchListContainer.hidden = true;
-    compressBtnText.textContent = "Shrink Image";
+    compressBtnText.textContent = "Compress Image";
     return;
   }
 
@@ -405,7 +423,7 @@ function renderBatchDrawer() {
   queueLengthText.textContent = filesQueue.length;
   batchListContainer.hidden = false;
   batchThumbnails.innerHTML = "";
-  compressBtnText.textContent = `Shrink All (${filesQueue.length} Images)`;
+  compressBtnText.textContent = `Compress All (${filesQueue.length} Images)`;
 
   filesQueue.forEach((file, index) => {
     const thumbDiv = document.createElement("div");
@@ -481,8 +499,10 @@ function loadCurrentFile() {
 async function runCompression() {
   if (filesQueue.length === 0 || !currentSourceImage) return;
 
+  const idleButtonText = compressBtnText.textContent;
   compressButton.disabled = true;
-  statusText.textContent = "Processing image(s)…";
+  compressBtnText.textContent = "Compressing…";
+  statusText.textContent = "";
 
   try {
     if (filesQueue.length === 1) {
@@ -494,7 +514,7 @@ async function runCompression() {
     } else {
       batchResults = [];
       for (let i = 0; i < filesQueue.length; i++) {
-        statusText.textContent = `Compressing ${i + 1} of ${filesQueue.length}…`;
+        compressBtnText.textContent = `Compressing ${i + 1} of ${filesQueue.length}…`;
         const file = filesQueue[i];
 
         const img = await loadImageFromFile(file);
@@ -518,6 +538,7 @@ async function runCompression() {
     statusText.textContent = err.message || "An error occurred during compression.";
   } finally {
     compressButton.disabled = false;
+    compressBtnText.textContent = idleButtonText;
   }
 }
 
@@ -542,14 +563,14 @@ function displaySingleResult(result, file) {
   downloadButton.download = `${baseName}-floccinaucinihilipilificated.${extensionFor(result.type)}`;
 
   const savedPercent = Math.max(0, (1 - result.blob.size / file.size) * 100);
-  reduction.textContent = `${savedPercent.toFixed(1)}% smaller`;
-  resultSummary.textContent = `Compressed from ${formatBytes(file.size)} down to ${formatBytes(result.blob.size)}.`;
+  reduction.textContent = `${savedPercent.toFixed(1)}% smaller.`;
+  resultSummary.textContent = file.name;
 
   originalResultSize.textContent = formatBytes(file.size);
-  originalResultDimensions.textContent = `${currentSourceImage.naturalWidth} × ${currentSourceImage.naturalHeight}`;
+  originalResultDimensions.textContent = `${imageFormatLabel(file.type, file.name)}: ${currentSourceImage.naturalWidth} × ${currentSourceImage.naturalHeight}`;
 
   compressedResultSize.textContent = formatBytes(result.blob.size);
-  compressedResultDimensions.textContent = `${result.width} × ${result.height} · ${result.type.replace("image/", "").toUpperCase()}`;
+  compressedResultDimensions.textContent = `${imageFormatLabel(result.type, file.name)}: ${result.width} × ${result.height}`;
 
   batchResultsWrap.hidden = true;
   downloadButton.hidden = false;
