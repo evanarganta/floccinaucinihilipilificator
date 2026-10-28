@@ -59,12 +59,8 @@
 
         <div class="controls">
           <div class="mode-tabs" role="tablist">
-            <button id="tab-target" class="tab-btn active" role="tab" aria-selected="true" data-mode="target">
-              Target File Size
-            </button>
-            <button id="tab-manual" class="tab-btn" role="tab" aria-selected="false" data-mode="manual">
-              Manual Scale
-            </button>
+            <button id="tab-target" class="tab-btn active" role="tab" aria-selected="true" data-mode="target">Target File Size</button>
+            <button id="tab-manual" class="tab-btn" role="tab" aria-selected="false" data-mode="manual">Manual Scale</button>
           </div>
 
           <div id="target-mode-controls" class="mode-panel">
@@ -79,10 +75,7 @@
               </div>
               <div id="custom-target-wrap" class="custom-target" hidden>
                 <input id="custom-target" type="number" min="1" value="500">
-                <select id="custom-unit">
-                  <option value="1024">KB</option>
-                  <option value="1048576">MB</option>
-                </select>
+                <select id="custom-unit"><option value="1024">KB</option><option value="1048576">MB</option></select>
               </div>
             </div>
           </div>
@@ -95,7 +88,6 @@
               </div>
               <input id="quality-range" type="range" min="5" max="100" value="80" step="1">
             </div>
-
             <div class="control-group">
               <div class="label-with-value">
                 <label for="scale-range" class="label">Resolution Scale</label>
@@ -112,10 +104,7 @@
           </div>
 
           <div class="control-group resolution-group">
-            <div class="label-with-hint">
-              <span class="label">Dimensions</span>
-            </div>
-            
+            <div class="label-with-hint"><span class="label">Dimensions</span></div>
             <div class="quick-res-buttons">
               <button data-res="original" class="res-btn active">Original</button>
               <button data-res="3840" class="res-btn">4K</button>
@@ -123,17 +112,13 @@
               <button data-res="1280" class="res-btn">720p</button>
               <button data-res="512" class="res-btn">512px</button>
             </div>
-
             <div class="dimensions-lock-row">
               <div class="dim-input-wrap">
                 <label for="max-width">Width (px)</label>
                 <input id="max-width" type="number" min="1" placeholder="Auto">
               </div>
               <button id="lock-aspect" class="lock-btn active" type="button" title="Maintain aspect ratio" aria-label="Maintain aspect ratio" aria-pressed="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.71-1.71"/>
-                </svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.71-1.71"/></svg>
               </button>
               <div class="dim-input-wrap">
                 <label for="max-height">Height (px)</label>
@@ -146,9 +131,7 @@
             <summary>Advanced Settings</summary>
             <div class="advanced-content">
               <div class="bg-color-group">
-            <div class="label-with-hint">
-              <span class="label">Background Color</span>
-            </div>
+                <div class="label-with-hint"><span class="label">Background Color</span></div>
                 <div class="bg-color-row">
                   <select id="bg-color-select">
                     <option value="transparent">Transparent</option>
@@ -173,14 +156,7 @@
           </div>
 
           <button id="compress-button" class="primary-button">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
-              <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
-              <path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
-              <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
-              <path d="M9 12h6"/>
-              <path d="m12 9 3 3-3 3"/>
-            </svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m11-5h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3m11 5h3a2 2 0 0 0 2-2v-3M9 12h6m-3-3 3 3-3 3"/></svg>
             <span id="compress-btn-text" aria-live="polite">Compress Image</span>
           </button>
           <p id="status" class="status" aria-live="polite"></p>
@@ -201,19 +177,12 @@
 
       <div class="comparison">
         <div class="comp-box">
-          <div class="comp-info">
-            <small id="original-result-dimensions">—</small>
-          </div>
+          <div class="comp-info"><small id="original-result-dimensions">—</small></div>
           <strong id="original-result-size">—</strong>
         </div>
-        <svg class="arrow-divider" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M5 12h14"/>
-          <path d="m13 6 6 6-6 6"/>
-        </svg>
+        <svg class="arrow-divider" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
         <div class="comp-box highlight">
-          <div class="comp-info">
-            <small id="compressed-result-dimensions">—</small>
-          </div>
+          <div class="comp-info"><small id="compressed-result-dimensions">—</small></div>
           <strong id="compressed-result-size">—</strong>
         </div>
       </div>
@@ -248,7 +217,7 @@
 
       <div class="result-actions">
         <a id="download-button" class="primary-button download" href="#">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5m-5 5V3"/></svg>
           <span id="download-btn-text">Download Image</span>
         </a>
         <button id="copy-button" class="secondary-button copy-btn">
@@ -261,7 +230,7 @@
         <h3>Batch Results (<span id="batch-completed-count">0</span> images)</h3>
         <div id="batch-results-list" class="batch-results-list"></div>
         <button id="download-zip-button" class="primary-button zip-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5m-5 5V3"/></svg>
           <span>Download All as ZIP</span>
         </button>
       </div>

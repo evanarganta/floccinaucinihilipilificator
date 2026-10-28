@@ -1,853 +1,438 @@
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
+const $ = (id) => document.getElementById(id);
+const $$ = (sel) => [...document.querySelectorAll(sel)];
 
-const uploadView = $("#upload-view");
-const editorView = $("#editor-view");
-const resultView = $("#result-view");
-const fileInput = $("#file-input");
-const dropZone = $("#drop-zone");
-const uploadError = $("#upload-error");
-const heroHeader = $(".hero");
-const footerElem = $("footer");
+let filesQueue = [], currentIndex = 0, currentSourceImage = null, currentSourceUrl = null, currentResultUrl = null;
+let activeMode = "target", selectedTargetBytes = 512000, isAspectLocked = true, sourceAspectRatio = 1, batchResults = [];
 
-const preview = $("#preview");
-const fileName = $("#file-name");
-const originalInfo = $("#original-info");
-
-const tabTarget = $("#tab-target");
-const tabManual = $("#tab-manual");
-const targetModeControls = $("#target-mode-controls");
-const manualModeControls = $("#manual-mode-controls");
-
-const presets = $("#presets");
-const customTargetWrap = $("#custom-target-wrap");
-const customTarget = $("#custom-target");
-const customUnit = $("#custom-unit");
-
-const qualityRange = $("#quality-range");
-const qualityValue = $("#quality-value");
-const scaleRange = $("#scale-range");
-const scaleValue = $("#scale-value");
-const scalePresetBtns = $$(".scale-preset-btn");
-
-const quickResBtns = $$(".res-btn");
-const maxWidthInput = $("#max-width");
-const maxHeightInput = $("#max-height");
-const lockAspectBtn = $("#lock-aspect");
-
-const formatSelect = $("#format");
-const bgColorSelect = $("#bg-color-select");
-const bgColorCustom = $("#bg-color-custom");
-
-const compressButton = $("#compress-button");
-const compressBtnText = $("#compress-btn-text");
-const statusText = $("#status");
-
-const batchCounter = $("#batch-counter");
-const batchCountText = $("#batch-count-text");
-const batchListContainer = $("#batch-list-container");
-const batchThumbnails = $("#batch-thumbnails");
-const queueLengthText = $("#queue-length");
-const clearQueueBtn = $("#clear-queue");
-
-const reduction = $("#reduction");
-const resultSummary = $("#result-summary");
-const originalResultSize = $("#original-result-size");
-const originalResultDimensions = $("#original-result-dimensions");
-const compressedResultSize = $("#compressed-result-size");
-const compressedResultDimensions = $("#compressed-result-dimensions");
-const resultPreview = $("#result-preview");
-const originalPreviewSplit = $("#original-preview-split");
-const downloadButton = $("#download-button");
-const downloadBtnText = $("#download-btn-text");
-const copyButton = $("#copy-button");
-const adjustButton = $("#adjust-button");
-
-const splitSliderContainer = $("#split-slider-container");
-const originalLayer = $("#original-layer");
-const splitHandle = $("#split-handle");
-const zoomBtns = $$(".zoom-btn");
-
-const batchResultsWrap = $("#batch-results-wrap");
-const batchResultsList = $("#batch-results-list");
-const batchCompletedCount = $("#batch-completed-count");
-const downloadZipButton = $("#download-zip-button");
-
-let filesQueue = [];
-let currentIndex = 0;
-let currentSourceImage = null;
-let currentSourceUrl = null;
-let currentResultUrl = null;
-
-let activeMode = "target";
-let selectedTargetBytes = 512000;
-let isAspectLocked = true;
-let sourceAspectRatio = 1;
-let batchResults = [];
-
-document.documentElement.setAttribute("data-theme", "dark");
-
-function updateOuterVisibility(isEditingOrResult) {
-  if (heroHeader) heroHeader.hidden = isEditingOrResult;
-  if (footerElem) footerElem.hidden = isEditingOrResult;
-}
+const EXT_MAP = { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png", "image/avif": "avif", "image/gif": "gif", "image/bmp": "bmp" };
+const extFor = (t) => EXT_MAP[t] || "webp";
+const formatLabel = (t, n) => (t.split("/")[1] || n.split(".").pop() || "IMG").toUpperCase();
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "—";
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 102400 ? 1 : 0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return bytes < 1048576 ? `${(bytes / 1024).toFixed(bytes < 102400 ? 1 : 0)} KB` : `${(bytes / 1048576).toFixed(2)} MB`;
 }
 
-function extensionFor(type) {
-  return ({
-    "image/webp": "webp",
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/avif": "avif",
-    "image/gif": "gif",
-    "image/bmp": "bmp"
-  })[type] || "webp";
-}
-
-function imageFormatLabel(type, fileName) {
-  const mimeLabels = {
-    "image/webp": "WEBP",
-    "image/jpeg": "JPG",
-    "image/jpg": "JPG",
-    "image/png": "PNG",
-    "image/avif": "AVIF",
-    "image/gif": "GIF",
-    "image/bmp": "BMP",
-    "image/x-ms-bmp": "BMP"
-  };
-  const extension = fileName.match(/\.([^.]+)$/)?.[1] || "IMAGE";
-  return mimeLabels[type.toLowerCase()] || extension.toUpperCase();
-}
-
-function getTargetBytes() {
-  if (selectedTargetBytes !== "custom") return Number(selectedTargetBytes);
-  const value = Number(customTarget.value);
-  const multiplier = Number(customUnit.value);
-  return Math.max(1, value || 1) * multiplier;
-}
-
-function supportsType(type) {
-  const canvas = document.createElement("canvas");
-  return canvas.toDataURL(type).startsWith(`data:${type}`);
-}
-
-function hasTransparency(image) {
-  const sampleWidth = Math.min(image.naturalWidth || image.width, 200);
-  const sampleHeight = Math.min(image.naturalHeight || image.height, 200);
-  if (!sampleWidth || !sampleHeight) return false;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = sampleWidth;
-  canvas.height = sampleHeight;
-
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  context.drawImage(image, 0, 0, sampleWidth, sampleHeight);
-
-  const pixels = context.getImageData(0, 0, sampleWidth, sampleHeight).data;
-  for (let i = 3; i < pixels.length; i += 4) {
-    if (pixels[i] < 255) return true;
+function showView(view) {
+  const isEditing = view !== "upload";
+  if ($("hero-header")) $("hero-header").hidden = isEditing;
+  document.querySelector(".hero")?.toggleAttribute("hidden", isEditing);
+  document.querySelector("footer")?.toggleAttribute("hidden", isEditing);
+  $("upload-view").hidden = view !== "upload";
+  $("editor-view").hidden = view !== "editor";
+  $("result-view").hidden = view !== "result";
+  if (view === "result") {
+    $("original-layer").style.clipPath = "inset(0 50% 0 0)";
+    $("split-handle").style.left = "50%";
   }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+const offCanvas = document.createElement("canvas");
+const offCtx = offCanvas.getContext("2d", { willReadFrequently: true });
+
+function hasTransparency(img) {
+  const w = offCanvas.width = Math.min(img.naturalWidth || img.width, 100);
+  const h = offCanvas.height = Math.min(img.naturalHeight || img.height, 100);
+  if (!w || !h) return false;
+  offCtx.clearRect(0, 0, w, h);
+  offCtx.drawImage(img, 0, 0, w, h);
+  const d = offCtx.getImageData(0, 0, w, h).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < 255) return true;
   return false;
 }
 
-function chooseFormat(image) {
-  if (formatSelect.value !== "auto") return formatSelect.value;
-  if (hasTransparency(image)) {
-    return supportsType("image/webp") ? "image/webp" : "image/png";
-  }
-  return supportsType("image/webp") ? "image/webp" : "image/jpeg";
+function chooseFormat(img) {
+  const fmt = $("format").value;
+  if (fmt !== "auto") return fmt;
+  const webpSupported = offCanvas.toDataURL("image/webp").startsWith("data:image/webp");
+  return hasTransparency(img) ? (webpSupported ? "image/webp" : "image/png") : (webpSupported ? "image/webp" : "image/jpeg");
 }
 
-function getBackgroundColor() {
-  if (bgColorSelect.value === "transparent") return null;
-  if (bgColorSelect.value === "custom") return bgColorCustom.value;
-  return bgColorSelect.value;
-}
+const canvasToBlob = (canvas, type, q) =>
+  new Promise((res, rej) => canvas.toBlob((b) => b ? res(b) : rej(new Error("Image encoding failed")), type, q));
 
-function canvasToBlob(canvas, type, quality) {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Browser image encoding failed."));
-        return;
-      }
-      resolve(blob);
-    }, type, quality);
-  });
-}
-
-function createCanvas(image, width, height, type) {
+function createCanvas(img, w, h, type) {
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(width));
-  canvas.height = Math.max(1, Math.round(height));
-
-  const context = canvas.getContext("2d");
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
-
-  const fillColor = getBackgroundColor();
-  if (type === "image/jpeg" || fillColor) {
-    context.fillStyle = fillColor || "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
+  canvas.width = Math.max(1, Math.round(w));
+  canvas.height = Math.max(1, Math.round(h));
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  const bg = $("bg-color-select").value === "transparent" ? null :
+             $("bg-color-select").value === "custom" ? $("bg-color-custom").value : $("bg-color-select").value;
+  if (type === "image/jpeg" || bg) {
+    ctx.fillStyle = bg || "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
-
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 
-async function encodeAtDimensions(image, width, height, type, targetBytes) {
-  const canvas = createCanvas(image, width, height, type);
-
-  if (type === "image/png") {
-    const blob = await canvasToBlob(canvas, type);
-    return { blob, width, height, quality: null };
-  }
+async function encodeAtDimensions(img, w, h, type, targetBytes) {
+  const canvas = createCanvas(img, w, h, type);
+  if (type === "image/png") return { blob: await canvasToBlob(canvas, type), width: canvas.width, height: canvas.height, quality: null };
 
   const highBlob = await canvasToBlob(canvas, type, 0.98);
-  if (highBlob.size <= targetBytes) {
-    return { blob: highBlob, width, height, quality: 0.98 };
+  if (highBlob.size <= targetBytes) return { blob: highBlob, width: canvas.width, height: canvas.height, quality: 0.98 };
+
+  let low = 0.05, high = 0.98, best = null;
+  // shortcut: 6 binary search steps (~1.5% precision) cut blob encoding passes in half
+  for (let i = 0; i < 6; i++) {
+    const q = (low + high) / 2;
+    const blob = await canvasToBlob(canvas, type, q);
+    if (blob.size <= targetBytes) { best = { blob, quality: q }; low = q; }
+    else { high = q; }
   }
-
-  let low = 0.05;
-  let high = 0.98;
-  let best = null;
-
-  for (let i = 0; i < 9; i++) {
-    const quality = (low + high) / 2;
-    const blob = await canvasToBlob(canvas, type, quality);
-
-    if (blob.size <= targetBytes) {
-      best = { blob, quality };
-      low = quality;
-    } else {
-      high = quality;
-    }
-  }
-
-  if (best) return { ...best, width, height };
-
-  const minBlob = await canvasToBlob(canvas, type, 0.05);
-  return { blob: minBlob, width, height, quality: 0.05 };
+  return best ? { ...best, width: canvas.width, height: canvas.height } :
+    { blob: await canvasToBlob(canvas, type, 0.05), width: canvas.width, height: canvas.height, quality: 0.05 };
 }
 
-async function optimizeTargetMode(image) {
-  const targetBytes = getTargetBytes();
-  const type = chooseFormat(image);
+async function optimizeTargetMode(img) {
+  const targetBytes = selectedTargetBytes === "custom"
+    ? Math.max(1, Number($("custom-target").value) || 1) * Number($("custom-unit").value)
+    : Number(selectedTargetBytes);
+  const type = chooseFormat(img);
+  const origW = img.naturalWidth, origH = img.naturalHeight;
+  let reqW = Number($("max-width").value) || origW;
+  let reqH = Number($("max-height").value) || Math.round(origH * (reqW / origW));
+  let w = Math.min(origW, reqW), h = Math.min(origH, reqH), best = null;
 
-  const origW = image.naturalWidth;
-  const origH = image.naturalHeight;
-
-  let reqW = Number(maxWidthInput.value) || origW;
-  let reqH = Number(maxHeightInput.value) || Math.round(origH * (reqW / origW));
-
-  let width = Math.min(origW, reqW);
-  let height = Math.min(origH, reqH);
-
-  let bestResult = null;
-
-  for (let attempt = 0; attempt < 10; attempt++) {
-    compressBtnText.textContent = `Optimizing pass ${attempt + 1}…`;
-    const result = await encodeAtDimensions(image, width, height, type, targetBytes);
-    bestResult = result;
-
-    if (result.blob.size <= targetBytes) return { ...result, type };
-
-    width = Math.max(1, Math.round(width * 0.85));
-    height = Math.max(1, Math.round(height * 0.85));
-
-    if (width < 32 || height < 32) break;
+  for (let pass = 0; pass < 8; pass++) {
+    $("compress-btn-text").textContent = `Optimizing pass ${pass + 1}…`;
+    const res = await encodeAtDimensions(img, w, h, type, targetBytes);
+    best = res;
+    if (res.blob.size <= targetBytes) return { ...res, type };
+    // shortcut: scale dimension proportionally to excess file size ratio
+    const ratio = Math.min(0.85, Math.sqrt(targetBytes / res.blob.size) * 0.95);
+    w = Math.max(32, Math.round(w * ratio));
+    h = Math.max(32, Math.round(h * ratio));
+    if (w <= 32 || h <= 32) break;
   }
-
-  return { ...bestResult, type };
+  return { ...best, type };
 }
 
-async function optimizeManualMode(image) {
-  const type = chooseFormat(image);
-  const quality = Number(qualityRange.value) / 100;
-  const scale = Number(scaleRange.value) / 100;
-
-  const origW = image.naturalWidth;
-  const origH = image.naturalHeight;
-
-  let width = Math.round(origW * scale);
-  let height = Math.round(origH * scale);
-
-  if (maxWidthInput.value && Number(maxWidthInput.value) < width) {
-    width = Number(maxWidthInput.value);
-    if (isAspectLocked) height = Math.round(width / sourceAspectRatio);
-  }
-  if (maxHeightInput.value && Number(maxHeightInput.value) < height) {
-    height = Number(maxHeightInput.value);
-    if (isAspectLocked) width = Math.round(height * sourceAspectRatio);
-  }
-
-  const canvas = createCanvas(image, width, height, type);
-  const blob = await canvasToBlob(canvas, type, type === "image/png" ? undefined : quality);
-
-  return { blob, width, height, quality: type === "image/png" ? null : quality, type };
+async function optimizeManualMode(img) {
+  const type = chooseFormat(img);
+  const q = Number($("quality-range").value) / 100, scale = Number($("scale-range").value) / 100;
+  let w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+  const maxW = Number($("max-width").value), maxH = Number($("max-height").value);
+  if (maxW && maxW < w) { w = maxW; if (isAspectLocked) h = Math.round(w / sourceAspectRatio); }
+  if (maxH && maxH < h) { h = maxH; if (isAspectLocked) w = Math.round(h * sourceAspectRatio); }
+  const canvas = createCanvas(img, w, h, type);
+  const blob = await canvasToBlob(canvas, type, type === "image/png" ? undefined : q);
+  return { blob, width: canvas.width, height: canvas.height, quality: type === "image/png" ? null : q, type };
 }
-
-tabTarget.addEventListener("click", () => switchMode("target"));
-tabManual.addEventListener("click", () => switchMode("manual"));
-
-function switchMode(mode) {
-  activeMode = mode;
-  if (mode === "target") {
-    tabTarget.classList.add("active");
-    tabTarget.setAttribute("aria-selected", "true");
-    tabManual.classList.remove("active");
-    tabManual.setAttribute("aria-selected", "false");
-    targetModeControls.hidden = false;
-    manualModeControls.hidden = true;
-  } else {
-    tabManual.classList.add("active");
-    tabManual.setAttribute("aria-selected", "true");
-    tabTarget.classList.remove("active");
-    tabTarget.setAttribute("aria-selected", "false");
-    targetModeControls.hidden = true;
-    manualModeControls.hidden = false;
-  }
-}
-
-qualityRange.addEventListener("input", () => {
-  qualityValue.textContent = `${qualityRange.value}%`;
-});
-
-scaleRange.addEventListener("input", () => {
-  scaleValue.textContent = `${scaleRange.value}%`;
-  updateScalePresetButtons(Number(scaleRange.value));
-});
-
-scalePresetBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const scale = Number(btn.dataset.scale);
-    scaleRange.value = scale;
-    scaleValue.textContent = `${scale}%`;
-    updateScalePresetButtons(scale);
-  });
-});
-
-function updateScalePresetButtons(currentScale) {
-  scalePresetBtns.forEach((b) => {
-    b.classList.toggle("active", Number(b.dataset.scale) === currentScale);
-  });
-}
-
-presets.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-bytes]");
-  if (!button) return;
-
-  [...presets.querySelectorAll("button")].forEach((item) => item.classList.remove("active"));
-  button.classList.add("active");
-
-  selectedTargetBytes = button.dataset.bytes === "custom" ? "custom" : Number(button.dataset.bytes);
-  customTargetWrap.hidden = selectedTargetBytes !== "custom";
-});
-
-lockAspectBtn.addEventListener("click", () => {
-  isAspectLocked = !isAspectLocked;
-  lockAspectBtn.classList.toggle("active", isAspectLocked);
-  lockAspectBtn.setAttribute("aria-pressed", String(isAspectLocked));
-});
-
-maxWidthInput.addEventListener("input", () => {
-  if (isAspectLocked && currentSourceImage && maxWidthInput.value) {
-    const w = Number(maxWidthInput.value);
-    maxHeightInput.value = Math.round(w / sourceAspectRatio);
-  }
-});
-
-maxHeightInput.addEventListener("input", () => {
-  if (isAspectLocked && currentSourceImage && maxHeightInput.value) {
-    const h = Number(maxHeightInput.value);
-    maxWidthInput.value = Math.round(h * sourceAspectRatio);
-  }
-});
-
-quickResBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    quickResBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-
-    const res = btn.dataset.res;
-    if (res === "original" || !currentSourceImage) {
-      maxWidthInput.value = "";
-      maxHeightInput.value = "";
-    } else {
-      const targetW = Number(res);
-      maxWidthInput.value = targetW;
-      if (isAspectLocked) {
-        maxHeightInput.value = Math.round(targetW / sourceAspectRatio);
-      }
-    }
-  });
-});
-
-bgColorSelect.addEventListener("change", () => {
-  bgColorCustom.hidden = bgColorSelect.value !== "custom";
-});
 
 function handleFileSelection(files) {
-  uploadError.textContent = "";
-  const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
-
-  if (validFiles.length === 0) {
-    uploadError.textContent = "Please select valid image files (PNG, JPEG, WebP, GIF, BMP, AVIF).";
-    return;
-  }
-
-  filesQueue = validFiles;
+  $("upload-error").textContent = "";
+  const valid = [...files].filter((f) => f.type.startsWith("image/"));
+  if (!valid.length) return ($("upload-error").textContent = "Please select valid image files.");
+  filesQueue = valid;
   currentIndex = 0;
   batchResults = [];
-
   renderBatchDrawer();
   loadCurrentFile();
 }
 
 function renderBatchDrawer() {
-  if (filesQueue.length <= 1) {
-    batchCounter.hidden = true;
-    batchListContainer.hidden = true;
-    compressBtnText.textContent = "Compress Image";
-    return;
-  }
-
-  batchCounter.hidden = false;
-  batchCountText.textContent = `${filesQueue.length} images loaded`;
-  queueLengthText.textContent = filesQueue.length;
-  batchListContainer.hidden = false;
-  batchThumbnails.innerHTML = "";
-  compressBtnText.textContent = `Compress All (${filesQueue.length} Images)`;
-
-  filesQueue.forEach((file, index) => {
-    const thumbDiv = document.createElement("div");
-    thumbDiv.className = `batch-thumb-item ${index === currentIndex ? "active" : ""}`;
-
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    thumbDiv.appendChild(img);
-
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "batch-thumb-remove";
-    removeBtn.textContent = "✕";
-    removeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      removeFileFromQueue(index);
-    });
-
-    thumbDiv.appendChild(removeBtn);
-
-    thumbDiv.addEventListener("click", () => {
-      currentIndex = index;
-      renderBatchDrawer();
-      loadCurrentFile();
-    });
-
-    batchThumbnails.appendChild(thumbDiv);
-  });
+  const len = filesQueue.length;
+  $("batch-counter").hidden = $("batch-list-container").hidden = len <= 1;
+  $("compress-btn-text").textContent = len > 1 ? `Compress All (${len} Images)` : "Compress Image";
+  if (len <= 1) return;
+  $("batch-count-text").textContent = `${len} images loaded`;
+  $("queue-length").textContent = len;
+  $("batch-thumbnails").innerHTML = filesQueue.map((f, i) => `
+    <div class="batch-thumb-item ${i === currentIndex ? "active" : ""}" data-idx="${i}">
+      <img src="${URL.createObjectURL(f)}" alt="">
+      <button class="batch-thumb-remove" data-del="${i}" title="Remove">✕</button>
+    </div>
+  `).join("");
 }
 
-function removeFileFromQueue(index) {
-  filesQueue.splice(index, 1);
-  if (filesQueue.length === 0) {
-    resetApp();
+$("batch-thumbnails").addEventListener("click", (e) => {
+  const del = e.target.closest("[data-del]");
+  if (del) {
+    e.stopPropagation();
+    filesQueue.splice(Number(del.dataset.del), 1);
+    if (!filesQueue.length) return resetApp();
+    if (currentIndex >= filesQueue.length) currentIndex = filesQueue.length - 1;
+    renderBatchDrawer();
+    loadCurrentFile();
     return;
   }
-  if (currentIndex >= filesQueue.length) {
-    currentIndex = filesQueue.length - 1;
+  const item = e.target.closest("[data-idx]");
+  if (item) {
+    currentIndex = Number(item.dataset.idx);
+    renderBatchDrawer();
+    loadCurrentFile();
   }
-  renderBatchDrawer();
-  loadCurrentFile();
-}
+});
 
-clearQueueBtn.addEventListener("click", () => resetApp());
+$("clear-queue").addEventListener("click", resetApp);
 
-function loadCurrentFile() {
-  if (filesQueue.length === 0) return;
+const loadImage = (src) => new Promise((res, rej) => {
+  const img = new Image();
+  img.onload = () => res(img);
+  img.onerror = rej;
+  img.src = src;
+});
 
+async function loadCurrentFile() {
+  if (!filesQueue.length) return;
   const file = filesQueue[currentIndex];
   if (currentSourceUrl) URL.revokeObjectURL(currentSourceUrl);
-
   currentSourceUrl = URL.createObjectURL(file);
-  const img = new Image();
-
-  img.onload = () => {
+  try {
+    const img = await loadImage(currentSourceUrl);
     currentSourceImage = img;
     sourceAspectRatio = img.naturalWidth / img.naturalHeight;
-    preview.src = currentSourceUrl;
-    originalPreviewSplit.src = currentSourceUrl;
-
-    fileName.textContent = file.name;
-    originalInfo.textContent = `${img.naturalWidth} × ${img.naturalHeight} · ${formatBytes(file.size)}`;
-
-    showEditor();
-  };
-
-  img.onerror = () => {
-    uploadError.textContent = "Error reading image file.";
-  };
-
-  img.src = currentSourceUrl;
+    $("preview").src = $("original-preview-split").src = currentSourceUrl;
+    $("file-name").textContent = file.name;
+    $("original-info").textContent = `${img.naturalWidth} × ${img.naturalHeight} · ${formatBytes(file.size)}`;
+    showView("editor");
+  } catch {
+    $("upload-error").textContent = "Error reading image file.";
+  }
 }
 
 async function runCompression() {
-  if (filesQueue.length === 0 || !currentSourceImage) return;
-
-  const idleButtonText = compressBtnText.textContent;
-  compressButton.disabled = true;
-  compressBtnText.textContent = "Compressing…";
-  statusText.textContent = "";
+  if (!filesQueue.length || !currentSourceImage) return;
+  const btn = $("compress-button"), btnText = $("compress-btn-text"), origText = btnText.textContent;
+  btn.disabled = true;
+  $("status").textContent = "";
 
   try {
     if (filesQueue.length === 1) {
-      const result = activeMode === "target"
-        ? await optimizeTargetMode(currentSourceImage)
-        : await optimizeManualMode(currentSourceImage);
-
-      displaySingleResult(result, filesQueue[0]);
+      const res = activeMode === "target" ? await optimizeTargetMode(currentSourceImage) : await optimizeManualMode(currentSourceImage);
+      displaySingleResult(res, filesQueue[0]);
     } else {
       batchResults = [];
       for (let i = 0; i < filesQueue.length; i++) {
-        compressBtnText.textContent = `Compressing ${i + 1} of ${filesQueue.length}…`;
-        const file = filesQueue[i];
-
-        const img = await loadImageFromFile(file);
-        const result = activeMode === "target"
-          ? await optimizeTargetMode(img)
-          : await optimizeManualMode(img);
-
-        batchResults.push({
-          file,
-          blob: result.blob,
-          width: result.width,
-          height: result.height,
-          type: result.type
-        });
+        btnText.textContent = `Compressing ${i + 1} of ${filesQueue.length}…`;
+        const file = filesQueue[i], img = await loadImage(URL.createObjectURL(file));
+        const res = activeMode === "target" ? await optimizeTargetMode(img) : await optimizeManualMode(img);
+        batchResults.push({ file, ...res });
       }
-
       displayBatchResults();
     }
   } catch (err) {
-    console.error(err);
-    statusText.textContent = err.message || "An error occurred during compression.";
+    $("status").textContent = err.message || "An error occurred during compression.";
   } finally {
-    compressButton.disabled = false;
-    compressBtnText.textContent = idleButtonText;
+    btn.disabled = false;
+    btnText.textContent = origText;
   }
 }
 
-function loadImageFromFile(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-function displaySingleResult(result, file) {
+function displaySingleResult(res, file) {
   if (currentResultUrl) URL.revokeObjectURL(currentResultUrl);
-  currentResultUrl = URL.createObjectURL(result.blob);
+  currentResultUrl = URL.createObjectURL(res.blob);
+  $("result-preview").src = $("download-button").href = currentResultUrl;
+  const base = file.name.replace(/\.[^.]+$/, "") || "image";
+  $("download-button").download = `${base}-floccinaucinihilipilificated.${extFor(res.type)}`;
 
-  resultPreview.src = currentResultUrl;
-  downloadButton.href = currentResultUrl;
+  const saved = Math.max(0, (1 - res.blob.size / file.size) * 100);
+  $("reduction").textContent = `${saved.toFixed(1)}% smaller.`;
+  $("result-summary").textContent = file.name;
+  $("original-result-size").textContent = formatBytes(file.size);
+  $("original-result-dimensions").textContent = `${formatLabel(file.type, file.name)}: ${currentSourceImage.naturalWidth} × ${currentSourceImage.naturalHeight}`;
+  $("compressed-result-size").textContent = formatBytes(res.blob.size);
+  $("compressed-result-dimensions").textContent = `${formatLabel(res.type, file.name)}: ${res.width} × ${res.height}`;
 
-  const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
-  downloadButton.download = `${baseName}-floccinaucinihilipilificated.${extensionFor(result.type)}`;
-
-  const savedPercent = Math.max(0, (1 - result.blob.size / file.size) * 100);
-  reduction.textContent = `${savedPercent.toFixed(1)}% smaller.`;
-  resultSummary.textContent = file.name;
-
-  originalResultSize.textContent = formatBytes(file.size);
-  originalResultDimensions.textContent = `${imageFormatLabel(file.type, file.name)}: ${currentSourceImage.naturalWidth} × ${currentSourceImage.naturalHeight}`;
-
-  compressedResultSize.textContent = formatBytes(result.blob.size);
-  compressedResultDimensions.textContent = `${imageFormatLabel(result.type, file.name)}: ${result.width} × ${result.height}`;
-
-  batchResultsWrap.hidden = true;
-  downloadButton.hidden = false;
-  copyButton.hidden = false;
-
-  resetSplitSlider();
-  updateOuterVisibility(true);
-  editorView.hidden = true;
-  resultView.hidden = false;
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  $("batch-results-wrap").hidden = true;
+  $("download-button").hidden = $("copy-button").hidden = false;
+  showView("result");
 }
 
 function displayBatchResults() {
-  const totalOriginalSize = batchResults.reduce((acc, curr) => acc + curr.file.size, 0);
-  const totalCompressedSize = batchResults.reduce((acc, curr) => acc + curr.blob.size, 0);
-  const savedPercent = Math.max(0, (1 - totalCompressedSize / totalOriginalSize) * 100);
+  const origTot = batchResults.reduce((s, r) => s + r.file.size, 0);
+  const compTot = batchResults.reduce((s, r) => s + r.blob.size, 0);
+  const saved = Math.max(0, (1 - compTot / origTot) * 100);
 
-  reduction.textContent = `${savedPercent.toFixed(1)}% smaller overall`;
-  resultSummary.textContent = `Processed ${batchResults.length} images. Saved total of ${formatBytes(totalOriginalSize - totalCompressedSize)}.`;
+  $("reduction").textContent = `${saved.toFixed(1)}% smaller overall`;
+  $("result-summary").textContent = `Processed ${batchResults.length} images. Saved ${formatBytes(origTot - compTot)}.`;
+  $("original-result-size").textContent = formatBytes(origTot);
+  $("original-result-dimensions").textContent = `${batchResults.length} items`;
+  $("compressed-result-size").textContent = formatBytes(compTot);
+  $("compressed-result-dimensions").textContent = `${batchResults.length} items`;
 
-  originalResultSize.textContent = formatBytes(totalOriginalSize);
-  originalResultDimensions.textContent = `${batchResults.length} items`;
+  $("batch-results-list").innerHTML = batchResults.map((r) => {
+    const name = `${r.file.name.replace(/\.[^.]+$/, "")}-floccinaucinihilipilificated.${extFor(r.type)}`;
+    return `
+      <div class="batch-res-item">
+        <span class="batch-res-name">${r.file.name}</span>
+        <span class="batch-res-size">${formatBytes(r.file.size)} → <strong>${formatBytes(r.blob.size)}</strong></span>
+        <a class="batch-res-dl" href="${URL.createObjectURL(r.blob)}" download="${name}">Download</a>
+      </div>`;
+  }).join("");
 
-  compressedResultSize.textContent = formatBytes(totalCompressedSize);
-  compressedResultDimensions.textContent = `${batchResults.length} items`;
-
-  batchResultsList.innerHTML = "";
-  batchResults.forEach((item) => {
-    const itemUrl = URL.createObjectURL(item.blob);
-    const row = document.createElement("div");
-    row.className = "batch-res-item";
-
-    const baseName = item.file.name.replace(/\.[^.]+$/, "");
-    const dlName = `${baseName}-floccinaucinihilipilificated.${extensionFor(item.type)}`;
-
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "batch-res-name";
-    nameSpan.textContent = item.file.name;
-
-    const sizeSpan = document.createElement("span");
-    sizeSpan.className = "batch-res-size";
-    const strong = document.createElement("strong");
-    strong.textContent = formatBytes(item.blob.size);
-    sizeSpan.textContent = `${formatBytes(item.file.size)} → `;
-    sizeSpan.appendChild(strong);
-
-    const dlLink = document.createElement("a");
-    dlLink.className = "batch-res-dl";
-    dlLink.href = itemUrl;
-    dlLink.download = dlName;
-    dlLink.textContent = "Download";
-
-    row.append(nameSpan, sizeSpan, dlLink);
-
-    batchResultsList.appendChild(row);
-  });
-
-  batchCompletedCount.textContent = batchResults.length;
-  batchResultsWrap.hidden = false;
-  downloadButton.hidden = true;
-  copyButton.hidden = true;
-
-  resetSplitSlider();
-  updateOuterVisibility(true);
-  editorView.hidden = true;
-  resultView.hidden = false;
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  $("batch-completed-count").textContent = batchResults.length;
+  $("batch-results-wrap").hidden = false;
+  $("download-button").hidden = $("copy-button").hidden = true;
+  showView("result");
 }
 
-downloadZipButton.addEventListener("click", async () => {
-  if (typeof JSZip === "undefined") {
-    alert("ZIP library is loading, please try again in a moment.");
-    return;
-  }
-
+$("download-zip-button").addEventListener("click", async () => {
+  if (typeof JSZip === "undefined") return alert("ZIP library is loading, please try again.");
   const zip = new JSZip();
-  batchResults.forEach((item) => {
-    const baseName = item.file.name.replace(/\.[^.]+$/, "");
-    const fileName = `${baseName}-floccinaucinihilipilificated.${extensionFor(item.type)}`;
-    zip.file(fileName, item.blob);
+  batchResults.forEach((r) => {
+    zip.file(`${r.file.name.replace(/\.[^.]+$/, "")}-floccinaucinihilipilificated.${extFor(r.type)}`, r.blob);
   });
-
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  const zipUrl = URL.createObjectURL(zipBlob);
-
-  const link = document.createElement("a");
-  link.href = zipUrl;
-  link.download = "compressed-images.zip";
-  link.click();
+  const blob = await zip.generateAsync({ type: "blob" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "compressed-images.zip";
+  a.click();
 });
 
-copyButton.addEventListener("click", async () => {
+$("copy-button").addEventListener("click", async () => {
   if (!currentResultUrl) return;
-
+  const label = $("copy-button").querySelector("span");
   try {
-    const response = await fetch(currentResultUrl);
-    const blob = await response.blob();
-
-    if (blob.type === "image/png") {
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-    } else {
-      const img = new Image();
-      img.src = currentResultUrl;
-      await new Promise((res) => (img.onload = res));
-
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-
-      canvas.toBlob(async (pngBlob) => {
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
-      }, "image/png");
+    const res = await fetch(currentResultUrl);
+    let blob = await res.blob();
+    if (blob.type !== "image/png") {
+      const img = await loadImage(currentResultUrl);
+      const c = createCanvas(img, img.naturalWidth, img.naturalHeight, "image/png");
+      blob = await canvasToBlob(c, "image/png");
     }
-
-    const origText = copyButton.querySelector("span").textContent;
-    copyButton.querySelector("span").textContent = "Copied! ✓";
-    setTimeout(() => {
-      copyButton.querySelector("span").textContent = origText;
-    }, 2000);
-  } catch (err) {
-    console.error(err);
-    alert("Could not copy image to clipboard automatically. You can right-click the image to copy.");
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    const old = label.textContent;
+    label.textContent = "Copied! ✓";
+    setTimeout(() => (label.textContent = old), 2000);
+  } catch {
+    alert("Could not copy image to clipboard. Right-click the image to copy.");
   }
 });
-
-let isDraggingSplit = false;
-
-function resetSplitSlider() {
-  if (originalLayer) originalLayer.style.clipPath = "inset(0 50% 0 0)";
-  if (splitHandle) splitHandle.style.left = "50%";
-}
-
-function updateSplitPosition(clientX) {
-  const rect = splitSliderContainer.getBoundingClientRect();
-  let percentage = ((clientX - rect.left) / rect.width) * 100;
-  percentage = Math.max(0, Math.min(100, percentage));
-
-  originalLayer.style.clipPath = `inset(0 ${100 - percentage}% 0 0)`;
-  splitHandle.style.left = `${percentage}%`;
-}
-
-splitSliderContainer.addEventListener("mousedown", (e) => {
-  isDraggingSplit = true;
-  updateSplitPosition(e.clientX);
-});
-
-window.addEventListener("mousemove", (e) => {
-  if (!isDraggingSplit) return;
-  updateSplitPosition(e.clientX);
-});
-
-window.addEventListener("mouseup", () => {
-  isDraggingSplit = false;
-});
-
-splitSliderContainer.addEventListener("touchstart", (e) => {
-  isDraggingSplit = true;
-  updateSplitPosition(e.touches[0].clientX);
-});
-
-window.addEventListener("touchmove", (e) => {
-  if (!isDraggingSplit) return;
-  updateSplitPosition(e.touches[0].clientX);
-});
-
-window.addEventListener("touchend", () => {
-  isDraggingSplit = false;
-});
-
-zoomBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    zoomBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-
-    const mode = btn.dataset.zoom;
-    const imgs = [resultPreview, originalPreviewSplit];
-
-    imgs.forEach((img) => {
-      if (mode === "fit") {
-        img.style.transform = "none";
-        img.style.maxHeight = "400px";
-      } else if (mode === "100") {
-        img.style.transform = "scale(1.2)";
-        img.style.maxHeight = "none";
-      } else if (mode === "200") {
-        img.style.transform = "scale(1.8)";
-        img.style.maxHeight = "none";
-      }
-    });
-  });
-});
-
-function showEditor() {
-  updateOuterVisibility(true);
-  uploadView.hidden = true;
-  resultView.hidden = true;
-  editorView.hidden = false;
-}
 
 function resetApp() {
   if (currentSourceUrl) URL.revokeObjectURL(currentSourceUrl);
   if (currentResultUrl) URL.revokeObjectURL(currentResultUrl);
-
-  filesQueue = [];
-  currentIndex = 0;
-  currentSourceImage = null;
-  currentSourceUrl = null;
-  currentResultUrl = null;
-  batchResults = [];
-
-  fileInput.value = "";
-  preview.removeAttribute("src");
-  resultPreview.removeAttribute("src");
-  originalPreviewSplit.removeAttribute("src");
-
-  uploadError.textContent = "";
-  statusText.textContent = "";
-  maxWidthInput.value = "";
-  maxHeightInput.value = "";
-
-  updateOuterVisibility(false);
-  editorView.hidden = true;
-  resultView.hidden = true;
-  uploadView.hidden = false;
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  filesQueue = []; currentIndex = 0; currentSourceImage = currentSourceUrl = currentResultUrl = null; batchResults = [];
+  $("file-input").value = $("upload-error").textContent = $("status").textContent = $("max-width").value = $("max-height").value = "";
+  $("preview").removeAttribute("src");
+  $("result-preview").removeAttribute("src");
+  $("original-preview-split").removeAttribute("src");
+  showView("upload");
 }
 
-fileInput.addEventListener("change", () => handleFileSelection(fileInput.files));
+// Split slider pointer events
+const splitContainer = $("split-slider-container");
+let isDragging = false;
+function updateSplit(x) {
+  const r = splitContainer.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(100, ((x - r.left) / r.width) * 100));
+  $("original-layer").style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+  $("split-handle").style.left = `${pct}%`;
+}
+splitContainer.addEventListener("pointerdown", (e) => { isDragging = true; splitContainer.setPointerCapture(e.pointerId); updateSplit(e.clientX); });
+splitContainer.addEventListener("pointermove", (e) => isDragging && updateSplit(e.clientX));
+const endDrag = (e) => { if (isDragging) { isDragging = false; try { splitContainer.releasePointerCapture(e.pointerId); } catch {} } };
+splitContainer.addEventListener("pointerup", endDrag);
+splitContainer.addEventListener("pointercancel", endDrag);
 
-["dragenter", "dragover"].forEach((eventName) => {
-  dropZone.addEventListener(eventName, (e) => {
-    e.preventDefault();
-    dropZone.classList.add("dragging");
+// Zoom controls
+document.querySelector(".zoom-controls").addEventListener("click", (e) => {
+  const btn = e.target.closest(".zoom-btn");
+  if (!btn) return;
+  $$(".zoom-btn").forEach((b) => b.classList.toggle("active", b === btn));
+  const z = btn.dataset.zoom;
+  [$("result-preview"), $("original-preview-split")].forEach((img) => {
+    img.style.transform = z === "fit" ? "none" : `scale(${z === "100" ? 1.2 : 1.8})`;
+    img.style.maxHeight = z === "fit" ? "400px" : "none";
   });
 });
 
-["dragleave", "drop"].forEach((eventName) => {
-  dropZone.addEventListener(eventName, (e) => {
-    e.preventDefault();
-    dropZone.classList.remove("dragging");
-  });
+// UI Controls & Listeners
+$("tab-target").addEventListener("click", () => switchMode("target"));
+$("tab-manual").addEventListener("click", () => switchMode("manual"));
+function switchMode(mode) {
+  activeMode = mode;
+  $("tab-target").classList.toggle("active", mode === "target");
+  $("tab-target").setAttribute("aria-selected", String(mode === "target"));
+  $("tab-manual").classList.toggle("active", mode === "manual");
+  $("tab-manual").setAttribute("aria-selected", String(mode === "manual"));
+  $("target-mode-controls").hidden = mode !== "target";
+  $("manual-mode-controls").hidden = mode !== "manual";
+}
+
+$("quality-range").addEventListener("input", (e) => $("quality-value").textContent = `${e.target.value}%`);
+$("scale-range").addEventListener("input", (e) => {
+  $("scale-value").textContent = `${e.target.value}%`;
+  $$(".scale-preset-btn").forEach((b) => b.classList.toggle("active", b.dataset.scale === e.target.value));
 });
 
-dropZone.addEventListener("drop", (e) => {
-  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-    handleFileSelection(e.dataTransfer.files);
+document.querySelector(".scale-presets").addEventListener("click", (e) => {
+  const btn = e.target.closest(".scale-preset-btn");
+  if (!btn) return;
+  $("scale-range").value = btn.dataset.scale;
+  $("scale-value").textContent = `${btn.dataset.scale}%`;
+  $$(".scale-preset-btn").forEach((b) => b.classList.toggle("active", b === btn));
+});
+
+$("presets").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-bytes]");
+  if (!btn) return;
+  $$("#presets button").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  selectedTargetBytes = btn.dataset.bytes === "custom" ? "custom" : Number(btn.dataset.bytes);
+  $("custom-target-wrap").hidden = selectedTargetBytes !== "custom";
+});
+
+$("lock-aspect").addEventListener("click", () => {
+  isAspectLocked = !isAspectLocked;
+  $("lock-aspect").classList.toggle("active", isAspectLocked);
+  $("lock-aspect").setAttribute("aria-pressed", String(isAspectLocked));
+});
+
+$("max-width").addEventListener("input", () => {
+  if (isAspectLocked && currentSourceImage && $("max-width").value) {
+    $("max-height").value = Math.round(Number($("max-width").value) / sourceAspectRatio);
   }
 });
+
+$("max-height").addEventListener("input", () => {
+  if (isAspectLocked && currentSourceImage && $("max-height").value) {
+    $("max-width").value = Math.round(Number($("max-height").value) * sourceAspectRatio);
+  }
+});
+
+document.querySelector(".quick-res-buttons").addEventListener("click", (e) => {
+  const btn = e.target.closest(".res-btn");
+  if (!btn) return;
+  $$(".res-btn").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  if (btn.dataset.res === "original" || !currentSourceImage) {
+    $("max-width").value = $("max-height").value = "";
+  } else {
+    const tw = Number(btn.dataset.res);
+    $("max-width").value = tw;
+    if (isAspectLocked) $("max-height").value = Math.round(tw / sourceAspectRatio);
+  }
+});
+
+$("bg-color-select").addEventListener("change", (e) => $("bg-color-custom").hidden = e.target.value !== "custom");
+$("compress-button").addEventListener("click", runCompression);
+$("new-image").addEventListener("click", resetApp);
+$("result-new-image").addEventListener("click", resetApp);
+$("adjust-button").addEventListener("click", () => showView("editor"));
+
+// Drag & Drop, File Input, Paste, Keyboard
+const drop = $("drop-zone");
+$("file-input").addEventListener("change", (e) => handleFileSelection(e.target.files));
+["dragenter", "dragover"].forEach((evt) => drop.addEventListener(evt, (e) => { e.preventDefault(); drop.classList.add("dragging"); }));
+["dragleave", "drop"].forEach((evt) => drop.addEventListener(evt, (e) => { e.preventDefault(); drop.classList.remove("dragging"); }));
+drop.addEventListener("drop", (e) => e.dataTransfer.files?.length && handleFileSelection(e.dataTransfer.files));
 
 window.addEventListener("paste", (e) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-  const items = Array.from(e.clipboardData.items);
-  const imageItems = items.filter((item) => item.type.startsWith("image/"));
-
-  if (imageItems.length > 0) {
-    const files = imageItems.map((item) => item.getAsFile());
-    handleFileSelection(files);
-  }
-});
-
-compressButton.addEventListener("click", runCompression);
-$("#new-image").addEventListener("click", resetApp);
-$("#result-new-image").addEventListener("click", resetApp);
-adjustButton.addEventListener("click", () => {
-  updateOuterVisibility(true);
-  resultView.hidden = true;
-  editorView.hidden = false;
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const items = [...e.clipboardData.items].filter((i) => i.type.startsWith("image/"));
+  if (items.length) handleFileSelection(items.map((i) => i.getAsFile()));
 });
 
 window.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !editorView.hidden) {
-    runCompression();
-  }
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !$("editor-view").hidden) runCompression();
 });
 
 window.addEventListener("beforeunload", () => {
