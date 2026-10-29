@@ -314,7 +314,7 @@ input[type="number"]:focus, select:focus { border-color: var(--accent-blue); }
 }
 .lock-btn.active { border-color: var(--accent); color: var(--accent); }
 
-.advanced summary { padding: 14px 0 8px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.advanced summary { padding: 0 0 15.5px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--muted); }
 .advanced summary:hover { color: var(--ink); }
 .advanced-content { padding: 2px 0 10px; }
 .bg-color-row { display: flex; gap: 8px; }
